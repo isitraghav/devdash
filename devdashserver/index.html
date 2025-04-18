@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Code Runner API Specification</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        line-height: 1.6;
+        margin: 20px;
+        background-color: #f4f4f4;
+        color: #333;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #0056b3; /* Blue headings */
+        border-bottom: 2px solid #ddd;
+        padding-bottom: 5px;
+      }
+      code {
+        background-color: #e9e9e9;
+        padding: 2px 5px;
+        border-radius: 3px;
+        font-family: monospace;
+      }
+      pre code {
+        display: block;
+        background-color: #2d2d2d; /* Dark background for code blocks */
+        color: #f0f0f0; /* Light text for code blocks */
+        padding: 15px;
+        border-radius: 5px;
+        overflow-x: auto; /* Allow horizontal scrolling if needed */
+        white-space: pre; /* Preserve whitespace */
+      }
+      .endpoint {
+        background-color: #fff;
+        padding: 15px;
+        margin-bottom: 20px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .method {
+        font-weight: bold;
+        padding: 3px 8px;
+        border-radius: 3px;
+        color: #fff;
+      }
+      .post {
+        background-color: #4caf50; /* Green */
+      } /* Style for POST method */
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        margin-bottom: 15px;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 10px;
+        text-align: left;
+      }
+      th {
+        background-color: #f0f0f0;
+        font-weight: bold;
+      }
+      .required::after {
+        content: "*";
+        color: red;
+        margin-left: 2px;
+      }
+      .warning {
+        background-color: #fff3cd; /* Light yellow */
+        color: #856404; /* Dark yellow text */
+        border: 1px solid #ffeeba;
+        padding: 10px;
+        border-radius: 4px;
+        margin-top: 15px;
+      }
+      .note {
+        background-color: #e2e3e5;
+        color: #383d41;
+        border: 1px solid #d6d8db;
+        padding: 10px;
+        border-radius: 4px;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Code Runner API Specification</h1>
+    <p>
+      This document provides details for using the Code Runner API, which allows
+      executing code snippets against predefined test cases.
+    </p>
+    <div class="warning">
+      <strong>Security Warning:</strong> The current implementation runs code
+      using Node.js `child_process` and lacks proper sandboxing.
+      <strong>DO NOT USE IN PRODUCTION</strong> without implementing a secure
+      execution environment (e.g., Docker containers).
+    </div>
+
+    <div class="endpoint">
+      <h2>Endpoint: <code>/run</code></h2>
+
+      <p>
+        <span class="method post">POST</span>
+        <code>/run</code>
+      </p>
+
+      <p>
+        Executes a given code snippet (currently JavaScript only) against a
+        series of test cases and returns the execution results.
+      </p>
+
+      <h3>Request</h3>
+      <p><strong>Content-Type:</strong> <code>application/json</code></p>
+      <p><strong>Body Parameters:</strong></p>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th class="required">Required</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>language</code></td>
+            <td>String</td>
+            <td>Yes</td>
+            <td>
+              The programming language of the code. Currently, only
+              <code>"javascript"</code> is supported.
+            </td>
+          </tr>
+          <tr>
+            <td><code>code</code></td>
+            <td>String</td>
+            <td>Yes</td>
+            <td>
+              The user's code as a string. The code <strong>must</strong> define
+              a function named <code>solve</code> which takes the test case
+              input as its argument(s). For example:
+              <code>function solve(input) { /* logic */ return result; }</code>
+            </td>
+          </tr>
+          <tr>
+            <td><code>testCases</code></td>
+            <td>Array of Objects</td>
+            <td>Yes</td>
+            <td>
+              An array containing test case objects. Cannot be empty. Each
+              object must have the following structure:
+              <ul>
+                <li>
+                  <code>input</code>: The input data for the test case (any
+                  valid JSON type). This will be passed to the
+                  <code>solve</code> function.
+                </li>
+                <li>
+                  <code>expectedOutput</code>: The expected result for the test
+                  case (any valid JSON type).
+                </li>
+              </ul>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>Example Request Body:</h4>
+      <pre><code>{
+  "language": "javascript",
+  "code": "function solve(nums) {\n  let sum = 0;\n  for(const num of nums) {\n    sum += num;\n  }\n  return sum;\n}",
+  "testCases": [
+    { "input": [1, 2, 3], "expectedOutput": 6 },
+    { "input": [-1, 0, 1], "expectedOutput": 0 }
+  ]
+}</code></pre>
+
+      <h3>Responses</h3>
+
+      <h4>Success Response (<code>200 OK</code>)</h4>
+      <p>
+        Returned when the API successfully processes the request (even if the
+        code fails tests or has errors).
+      </p>
+      <p><strong>Content-Type:</strong> <code>application/json</code></p>
+      <p><strong>Body Parameters:</strong></p>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>overallStatus</code></td>
+            <td>String</td>
+            <td>
+              A summary status for the entire submission. Possible values
+              include:
+              <ul>
+                <li><code>Accepted</code>: All test cases passed.</li>
+                <li>
+                  <code>Wrong Answer</code>: At least one test case failed due
+                  to incorrect output.
+                </li>
+                <li>
+                  <code>Runtime Error</code>: The code produced an error during
+                  execution for at least one test case.
+                </li>
+                <li>
+                  <code>Time Limit Exceeded</code>: The code took too long to
+                  execute for at least one test case.
+                </li>
+                <li>
+                  <code>Output Parsing Error</code>: The code's output wasn't
+                  valid JSON.
+                </li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <td><code>results</code></td>
+            <td>Array of Objects</td>
+            <td>
+              An array containing detailed results for each test case executed.
+              See structure below.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        <strong>Structure of Objects in <code>results</code> Array:</strong>
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>testCase</code></td>
+            <td>Number</td>
+            <td>The 1-based index of the test case.</td>
+          </tr>
+          <tr>
+            <td><code>status</code></td>
+            <td>String</td>
+            <td>
+              The outcome of this specific test case. Possible values:
+              <ul>
+                <li><code>Passed</code></li>
+                <li><code>Wrong Answer</code></li>
+                <li><code>Runtime Error</code></li>
+                <li><code>Time Limit Exceeded</code></li>
+                <li><code>Output Parsing Error</code></li>
+                <li>
+                  <code>Process execution failed</code> (Server-side issue)
+                </li>
+                <li><code>Server error: ...</code> (Server-side issue)</li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <td><code>passed</code></td>
+            <td>Boolean</td>
+            <td>
+              <code>true</code> if the actual output matched the expected
+              output, <code>false</code> otherwise. Note: This is only
+              <code>true</code> if the status is 'Passed'.
+            </td>
+          </tr>
+          <tr>
+            <td><code>input</code></td>
+            <td>Any</td>
+            <td>The input provided for this test case (echoed back).</td>
+          </tr>
+          <tr>
+            <td><code>expectedOutput</code></td>
+            <td>Any</td>
+            <td>The expected output for this test case.</td>
+          </tr>
+          <tr>
+            <td><code>actualOutput</code></td>
+            <td>Any / Null</td>
+            <td>
+              The actual output produced by the user's code (parsed as JSON if
+              possible). Null if there was an error before output could be
+              generated, or if output parsing failed.
+            </td>
+          </tr>
+          <tr>
+            <td><code>stderr</code></td>
+            <td>String / Null</td>
+            <td>
+              Any error messages or output written to stderr by the user's code
+              or the execution environment. Null if stderr was empty.
+            </td>
+          </tr>
+          <tr>
+            <td><code>executionTimeMs</code></td>
+            <td>String</td>
+            <td>
+              Approximate execution time for this test case in milliseconds
+              (e.g., "4.52").
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>Example Success Response Body:</h4>
+      <pre><code>{
+  "overallStatus": "Wrong Answer",
+  "results": [
+    {
+      "testCase": 1,
+      "status": "Passed",
+      "passed": true,
+      "input": [1, 2, 3],
+      "expectedOutput": 6,
+      "actualOutput": 6,
+      "stderr": null,
+      "executionTimeMs": "3.15"
+    },
+    {
+      "testCase": 2,
+      "status": "Wrong Answer",
+      "passed": false,
+      "input": [5, 5],
+      "expectedOutput": 11,
+      "actualOutput": 10,
+      "stderr": null,
+      "executionTimeMs": "1.89"
+    }
+  ]
+}</code></pre>
+
+      <h4>Error Response (<code>400 Bad Request</code>)</h4>
+      <p>
+        Returned for invalid requests (e.g., missing fields, invalid language,
+        malformed JSON, empty test cases).
+      </p>
+      <p><strong>Content-Type:</strong> <code>application/json</code></p>
+      <h4>Example Error Response Body:</h4>
+      <pre><code>{
+  "message": "Bad Request: Missing language, code, or testCases (must be an array)."
+}</code></pre>
+      <pre><code>{
+  "message": "Bad Request: Only \"javascript\" language is supported in this example."
+}</code></pre>
+
+      <h4>Error Response (<code>500 Internal Server Error</code>)</h4>
+      <p>Returned for unexpected server-side errors during processing.</p>
+      <p><strong>Content-Type:</strong> <code>application/json</code></p>
+      <h4>Example Error Response Body:</h4>
+      <pre><code>{
+  "message": "Internal Server Error",
+  "error": "Detailed error message if available"
+}</code></pre>
+
+      <h3>Example Usage (cURL)</h3>
+      <pre><code>curl -X POST http://localhost:3000/run \
+     -H "Content-Type: application/json" \
+     -d '{
+           "language": "javascript",
+           "code": "function solve(a, b) { return a + b; }",
+           "testCases": [
+             { "input": [1, 2], "expectedOutput": 3 },
+             { "input": [10, -5], "expectedOutput": 5 }
+           ]
+         }'</code></pre>
+      <div class="note">
+        <strong>Note:</strong> The example above assumes the
+        <code>solve</code> function takes multiple arguments directly from the
+        input array. The actual server implementation passes the *entire* input
+        value as the first argument. To handle multiple inputs like
+        <code>[1, 2]</code>, the function should be written as
+        <code>function solve(arr) { return arr[0] + arr[1]; }</code> or similar,
+        depending on the expected input structure for the problem.
+      </div>
+
+      <h3>Current Limitations & Notes</h3>
+      <ul>
+        <li>
+          <strong>Security:</strong> Lacks proper sandboxing. Not safe for
+          untrusted code.
+        </li>
+        <li>
+          <strong>Language Support:</strong> Only JavaScript is currently
+          supported.
+        </li>
+        <li>
+          <strong>Resource Limits:</strong> Basic timeout is implemented, but no
+          memory limits are enforced.
+        </li>
+        <li>
+          <strong>Equality Check:</strong> Uses a simple `JSON.stringify`
+          comparison for output checking, which may not be suitable for all data
+          types (e.g., object property order, `NaN`, `undefined` within
+          objects).
+        </li>
+        <li>
+          <strong>Input Method:</strong> Assumes input is passed as arguments to
+          a function named `solve`. Doesn't support reading from standard input
+          within the user code.
+        </li>
+      </ul>
+    </div>
+  </body>
+</html>
